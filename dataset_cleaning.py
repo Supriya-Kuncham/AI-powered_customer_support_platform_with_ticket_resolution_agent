@@ -58,7 +58,10 @@ print("\nNumerical data statistics:")
 print(df[numeric_columns].describe())
 
 # Remove outliers using the IQR method
-for column in numeric_columns:
+# Remove outliers only from meaningful numerical columns
+outlier_columns = ["Customer Age"]
+
+for column in outlier_columns:
     Q1 = df[column].quantile(0.25)
     Q3 = df[column].quantile(0.75)
 
@@ -71,7 +74,6 @@ for column in numeric_columns:
         (df[column] >= lower_limit) &
         (df[column] <= upper_limit)
     ]
-
 
 # STEP 5: String Operations
 
