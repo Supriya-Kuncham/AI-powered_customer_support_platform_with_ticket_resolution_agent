@@ -3,18 +3,14 @@
 This is a working implementation of Milestone 1 from the SupportPilot deck:
 ticket submission, AI-based classification, severity prediction, and
 priority assignment — built and trained on the real
-`IT_Support_Ticket_Data.csv` dataset (29,650 real support tickets), not the
-10-row toy example shown in the slides.
+`IT_Support_Ticket_Data.csv` dataset (29,650 real support tickets)
 
 ## No external AI API is used
 
 This project does **not** call OpenAI, Anthropic, or any external LLM API.
 "AI" here means classical machine learning trained locally with
-**scikit-learn** (TF-IDF vectorizer + Logistic Regression), exactly as
-specified in slide 10 of the deck. The only "API" in the project is the
-**REST API that SupportPilot itself exposes** (`POST /api/ticket`), which
-slides 47–50 explicitly ask for — that's a Flask endpoint you host, not a
-third-party service. If you later want LLM-based classification (mentioned
+**scikit-learn** (TF-IDF vectorizer + Logistic Regression). The only "API" in the project is the
+**REST API that SupportPilot itself exposes** (`POST /api/ticket`). If you later want LLM-based classification (mentioned
 as a future upgrade in the deck's intro), that would need an API key and
 is a Milestone-2+ concern, not part of this build.
 
@@ -38,15 +34,8 @@ Then open **http://127.0.0.1:5000** in a browser.
 - `POST /api/ticket` — REST endpoint, send JSON `{"description": "..."}` and get back category/severity/priority
 - `GET /api/tickets` — JSON list of all stored tickets
 
-## What's new since the first version
 
-- **Redesigned UI** — a dark "ops console" theme instead of generic Bootstrap, built to read like a real ticket-triage tool.
-- **Likely Causes panel** — after classification, the app now shows 2–3 probable root causes for the issue plus a suggested next action for each, using a keyword + department-based diagnostic layer in `classifier.py` (`get_possible_causes`). This is the seed for an auto-resolution feature in a later milestone.
-- **Dashboard** (`/dashboard`) — total tickets, critical/high/P1 counts, and two charts (tickets by category, tickets by severity) built with Chart.js, reading live from SQLite.
-- **`causes` column** added to the `tickets` table so root-cause suggestions are stored with each ticket, not just shown once.
-- New `/api/stats` endpoint for the same aggregate numbers, in case a future milestone wants to consume them elsewhere (e.g. a chatbot or a separate analytics service).
-
-## Authentication (new)
+## Authentication 
 
 Real login is now enforced — `/`, `/tickets`, `/dashboard` all require a
 logged-in session; anyone not logged in is redirected to `/login`.
