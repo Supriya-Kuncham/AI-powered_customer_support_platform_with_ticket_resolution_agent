@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in — SupportPilot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0B1220; --panel: #121B2D; --panel-alt: #18233A; --border: #263349;
+    --text: #E7EDF6; --muted: #8697AD; --accent: #F5A623; --accent-2: #FFC868;
+    --critical: #E5484D;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif;
+  }
+  .card {
+    width: 100%; max-width: 380px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 10px; padding: 32px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 26px; }
+  .brand-mark {
+    width: 30px; height: 30px; border-radius: 7px;
+    background: linear-gradient(135deg, var(--accent), var(--critical));
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 12.5px; color: #14100a;
+  }
+  .brand-name { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 17px; }
+  h1 { font-family: 'Space Grotesk', sans-serif; font-size: 19px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin: 0 0 22px; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 6px; }
+  .field input {
+    width: 100%; background: var(--panel-alt); border: 1px solid var(--border);
+    border-radius: 5px; color: var(--text); font-size: 14px; padding: 10px 12px;
+  }
+  .field input:focus { outline: none; border-color: var(--accent); }
+  .btn {
+    width: 100%; background: var(--accent); color: #1A1204; border: none; border-radius: 5px;
+    padding: 11px 16px; font-family: 'Space Grotesk', sans-serif; font-weight: 600;
+    font-size: 14.5px; cursor: pointer;
+  }
+  .btn:hover { background: var(--accent-2); }
+  .alert {
+    background: rgba(229,72,77,0.12); border: 1px solid var(--critical); color: #FFB4B7;
+    padding: 10px 14px; border-radius: 5px; font-size: 13.5px; margin-bottom: 16px;
+  }
+  .switch { text-align: center; margin-top: 18px; font-size: 13px; color: var(--muted); }
+  .switch a { color: var(--accent); text-decoration: none; }
+  .switch a:hover { color: var(--accent-2); }
+
+  .oauth-btn {
+    width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
+    background: var(--panel-alt); border: 1px solid var(--border); border-radius: 5px;
+    padding: 10px 16px; color: var(--text); font-size: 13.5px; font-weight: 500;
+    cursor: pointer; margin-bottom: 10px;
+  }
+  .oauth-btn:hover { border-color: var(--muted); }
+  .oauth-btn svg { width: 17px; height: 17px; flex-shrink: 0; }
+  .oauth-btn.facebook { background: #1877F2; border-color: #1877F2; color: #fff; }
+  .oauth-btn.facebook:hover { background: #1666d8; }
+  .divider { display: flex; align-items: center; gap: 10px; margin: 18px 0; color: var(--muted); font-size: 12px; }
+  .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+  .oauth-disabled-note { font-size: 11.5px; color: var(--muted); text-align: center; margin-bottom: 14px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">
+      <div class="brand-mark">SP</div>
+      <div class="brand-name">SupportPilot</div>
+    </div>
+    <h1>Sign in</h1>
+    <p class="sub">Access the ticket triage console</p>
+
+    {% if error %}
+      <div class="alert">{{ error }}</div>
+    {% endif %}
+
+    {% if google_enabled %}
+    <a href="/auth/google/login" class="oauth-btn">
+      <svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.9 32.6 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.4-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.1 18.9 12 24 12c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.6 3 24 3c-7.5 0-14 4.2-17.7 10.4z"/><path fill="#4CAF50" d="M24 45c5.4 0 10.3-2.1 14-5.5l-6.5-5.4C29.5 35.9 26.9 36.8 24 36.8c-5.4 0-9.9-3.4-11.5-8.2l-6.6 5.1C9.9 40.7 16.4 45 24 45z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.7 2-2 3.7-3.7 5l6.5 5.4C41.5 35.4 45 30.1 45 24c0-1.4-.1-2.4-.4-3.5z"/></svg>
+      Continue with Google
+    </a>
+    {% endif %}
+    {% if facebook_enabled %}
+    <a href="/auth/facebook/login" class="oauth-btn facebook">
+      <svg viewBox="0 0 24 24" fill="#fff"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.99 3.66 9.13 8.44 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.77-3.89 1.09 0 2.23.2 2.23.2v2.45h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99C18.34 21.13 22 16.99 22 12z"/></svg>
+      Continue with Facebook
+    </a>
+    {% endif %}
+    {% if google_enabled or facebook_enabled %}
+      <div class="divider">or with email</div>
+    {% endif %}
+
+    <form method="POST" action="/login">
+      <input type="hidden" name="next" value="{{ next }}">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" name="email" required autofocus>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" name="password" required>
+      </div>
+      <button type="submit" class="btn">Sign in</button>
+    </form>
+
+    <div class="switch">Don't have an account? <a href="/register">Create one</a></div>
+  </div>
+</body>
+</html>

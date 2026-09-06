@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Local database (contains whatever tickets/users you test with locally)
+tickets.db
+tickets.db.bak
+
+# OS/editor cruft
+.DS_Store
+.vscode/

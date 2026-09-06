@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SupportPilot — Ticket Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+{% if show_dashboard %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+{% endif %}
+<style>
+  :root {
+    --bg:        #0B1220;
+    --panel:     #121B2D;
+    --panel-alt: #18233A;
+    --border:    #263349;
+    --text:      #E7EDF6;
+    --muted:     #8697AD;
+    --accent:    #F5A623;
+    --accent-2:  #FFC868;
+    --critical:  #E5484D;
+    --high:      #F5A623;
+    --medium:    #4C9EEB;
+    --low:       #3DD68C;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; font-size: 15px; line-height: 1.5; }
+  h1, h2, h3, .display { font-family: 'Space Grotesk', sans-serif; font-weight: 600; letter-spacing: -0.01em; margin: 0; }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+  a { color: inherit; text-decoration: none; }
+
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 18px 32px; border-bottom: 1px solid var(--border); background: var(--panel); }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand-mark { width: 10px; height: 10px; border-radius: 2px; background: var(--accent); }
+  .brand-name { font-size: 18px; }
+  .brand-sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .nav-links { display: flex; align-items: center; gap: 4px; }
+  .nav-links a { padding: 8px 14px; font-size: 13.5px; color: var(--muted); border: 1px solid transparent; border-radius: 5px; }
+  .nav-links a:hover { color: var(--text); background: var(--panel-alt); }
+  .nav-links a.active { color: var(--accent); border-color: var(--border); background: var(--panel-alt); }
+  .nav-user { display: flex; align-items: center; gap: 12px; margin-left: 10px; padding-left: 14px; border-left: 1px solid var(--border); }
+  .nav-user .who { font-size: 12.5px; color: var(--muted); }
+  .nav-user a { font-size: 12.5px; color: var(--accent); }
+  .nav-user a:hover { color: var(--accent-2); }
+
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 36px 32px 64px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 860px) { .grid-2 { grid-template-columns: 1fr; } .wrap { padding: 24px 18px 48px; } }
+
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 26px; }
+  .panel-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .panel-head .idx { color: var(--accent); font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
+  .panel-head h2 { font-size: 17px; }
+
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 6px; }
+  .field input, .field textarea { width: 100%; background: var(--panel-alt); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-family: 'Inter', sans-serif; font-size: 14px; padding: 10px 12px; }
+  .field input:focus, .field textarea:focus { outline: none; border-color: var(--accent); }
+  .field textarea { resize: vertical; min-height: 110px; }
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  .btn { width: 100%; background: var(--accent); color: #1A1204; border: none; border-radius: 5px; padding: 12px 16px; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 14.5px; cursor: pointer; }
+  .btn:hover { background: var(--accent-2); }
+
+  .alert { background: rgba(229,72,77,0.12); border: 1px solid var(--critical); color: #FFB4B7; padding: 10px 14px; border-radius: 5px; font-size: 13.5px; margin-bottom: 16px; }
+
+  .empty-state { color: var(--muted); font-size: 14px; padding: 8px 0 4px; }
+  .ticket-ref { font-family: 'IBM Plex Mono', monospace; color: var(--muted); font-size: 12.5px; margin-bottom: 18px; }
+  .readout { display: flex; flex-direction: column; gap: 14px; }
+  .readout-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: var(--panel-alt); border: 1px solid var(--border); border-radius: 6px; }
+  .readout-label { color: var(--muted); font-size: 12.5px; }
+  .readout-value { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 15px; }
+  .readout-conf { font-family: 'IBM Plex Mono', monospace; color: var(--muted); font-size: 12px; margin-left: 8px; }
+
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; }
+  .dot-Critical { background: var(--critical); box-shadow: 0 0 0 3px rgba(229,72,77,0.18); }
+  .dot-High     { background: var(--high); box-shadow: 0 0 0 3px rgba(245,166,35,0.18); }
+  .dot-Medium   { background: var(--medium); box-shadow: 0 0 0 3px rgba(76,158,235,0.18); }
+  .dot-Low      { background: var(--low); box-shadow: 0 0 0 3px rgba(61,214,140,0.18); }
+
+  .priority-chip { font-family: 'IBM Plex Mono', monospace; font-weight: 500; font-size: 13px; padding: 3px 10px; border-radius: 4px; background: rgba(245,166,35,0.14); border: 1px solid var(--accent); color: var(--accent-2); }
+
+  .causes-head { margin-top: 24px; margin-bottom: 12px; font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .causes-head::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+  .cause-item { border-left: 2px solid var(--accent); padding: 4px 0 4px 14px; margin-bottom: 14px; }
+  .cause-item .cause-text { font-size: 14px; margin-bottom: 3px; }
+  .cause-item .suggestion { font-size: 12.5px; color: var(--muted); }
+  .cause-item .suggestion::before { content: "→ "; color: var(--accent); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 12px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  td { padding: 12px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  .badge { font-size: 12px; padding: 3px 9px; border-radius: 4px; font-family: 'IBM Plex Mono', monospace; }
+  .badge-Critical { background: rgba(229,72,77,0.14); color: #FF8388; }
+  .badge-High     { background: rgba(245,166,35,0.14); color: var(--accent-2); }
+  .badge-Medium   { background: rgba(76,158,235,0.14); color: #86C0F5; }
+  .badge-Low      { background: rgba(61,214,140,0.14); color: #7CE8B2; }
+
+  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  @media (max-width: 860px) { .stat-row { grid-template-columns: 1fr 1fr; } }
+  .stat-card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; }
+  .stat-num { font-family: 'Space Grotesk', sans-serif; font-size: 28px; font-weight: 700; }
+  .stat-label { color: var(--muted); font-size: 12.5px; margin-top: 4px; }
+  .chart-wrap { position: relative; height: 260px; }
+
+  /* ---------- RAG workflow stepper ---------- */
+  .workflow-steps { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+  .workflow-step {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; background: var(--panel-alt); border: 1px solid var(--border);
+    border-radius: 5px; font-size: 12.5px; color: var(--muted);
+  }
+  .workflow-step.completed { color: var(--low); border-color: rgba(61,214,140,0.35); }
+  .workflow-step.skipped { color: var(--muted); opacity: 0.6; }
+  .workflow-step .step-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* ---------- KB retrieved doc cards ---------- */
+  .kb-card {
+    background: var(--panel-alt); border: 1px solid var(--border); border-radius: 6px;
+    padding: 12px 14px; margin-bottom: 10px;
+  }
+  .kb-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; }
+  .kb-title { font-size: 13.5px; font-weight: 500; }
+  .kb-relevance { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--low); }
+  .kb-meta { font-size: 11.5px; color: var(--muted); }
+
+  /* ---------- resolution steps with citations ---------- */
+  .resolution-step { border-left: 2px solid var(--low); padding: 4px 0 4px 14px; margin-bottom: 12px; }
+  .resolution-step .step-text { font-size: 14px; margin-bottom: 3px; }
+  .resolution-step .step-source { font-size: 11.5px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; }
+  .resolution-step .step-source::before { content: "\21b3 Source: "; color: var(--accent); font-family: 'Inter', sans-serif; }
+
+  .insufficient-box {
+    background: rgba(245,166,35,0.08); border: 1px solid var(--accent); border-radius: 6px;
+    padding: 14px 16px; font-size: 13.5px; color: var(--accent-2);
+  }
+
+  /* ---------- feedback buttons ---------- */
+  .feedback-row { display: flex; gap: 10px; margin-top: 18px; }
+  .feedback-btn {
+    flex: 1; padding: 9px 12px; border-radius: 5px; border: 1px solid var(--border);
+    background: var(--panel-alt); color: var(--text); font-size: 12.5px; cursor: pointer;
+    font-family: 'Inter', sans-serif;
+  }
+  .feedback-btn.yes:hover { border-color: var(--low); color: var(--low); }
+  .feedback-btn.no:hover { border-color: var(--critical); color: #FF8388; }
+  .feedback-result { font-size: 12.5px; color: var(--muted); margin-top: 14px; }
+
+  /* ---------- AI Agent page ---------- */
+  .pipeline { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+  .pipeline-step { display: flex; align-items: center; gap: 9px; padding: 11px 15px; background: var(--panel-alt); border: 1px solid var(--border); border-radius: 6px; font-size: 12.5px; }
+  .pipeline-step .step-num { width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #1A1204; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .pipeline-arrow { color: var(--muted); align-self: center; }
+  .metric-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .metric-table th { text-align: left; color: var(--muted); font-weight: 500; font-size: 12px; padding: 9px 10px; border-bottom: 1px solid var(--border); }
+  .metric-table td { padding: 11px 10px; border-bottom: 1px solid var(--border); }
+  .metric-pass { color: var(--low); font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+  .metric-below { color: var(--accent-2); font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+  .note-box { background: var(--panel-alt); border-left: 3px solid var(--accent); border-radius: 4px; padding: 13px 15px; font-size: 12.5px; color: var(--muted); margin-top: 16px; }
+  .note-box strong { color: var(--text); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-mark"></div>
+    <div>
+      <div class="brand-name">SupportPilot</div>
+      <div class="brand-sub">AI ticket triage console</div>
+    </div>
+  </div>
+  <div class="nav-links">
+    <a href="/" class="{{ 'active' if not show_tickets and not show_dashboard and not show_ai_agent else '' }}">Submit</a>
+    <a href="/tickets" class="{{ 'active' if show_tickets else '' }}">Tickets</a>
+    <a href="/dashboard" class="{{ 'active' if show_dashboard else '' }}">Dashboard</a>
+    <a href="/ai-agent" class="{{ 'active' if show_ai_agent else '' }}">AI Agent</a>
+    <div class="nav-user">
+      <span class="who">{{ session.name if session and session.name else (session.email if session else '') }}</span>
+      <a href="/logout">Log out</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  {% if not show_tickets and not show_dashboard %}
+  <div class="grid-2">
+
+    <div class="panel">
+      <div class="panel-head">
+        <span class="idx">01</span>
+        <h2>Submit a ticket</h2>
+      </div>
+
+      {% if error %}
+        <div class="alert">{{ error }}</div>
+      {% endif %}
+
+      <form method="POST" action="/submit">
+        <div class="field">
+          <label>Employee name</label>
+          <input type="text" name="employee_name" placeholder="Arun Kumar" value="{{ session.name or '' }}">
+        </div>
+        <div class="field">
+          <label>Department (optional)</label>
+          <input type="text" name="department" placeholder="e.g. Sales">
+        </div>
+        <div class="field">
+          <label>Ticket title</label>
+          <input type="text" name="title" placeholder="VPN not connecting">
+        </div>
+        <div class="field">
+          <label>Description</label>
+          <textarea name="description" required placeholder="Describe the issue in detail — what happened, when it started, what you've already tried..."></textarea>
+        </div>
+        <button type="submit" class="btn">Run AI triage</button>
+      </form>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <span class="idx">02</span>
+        <h2>Diagnosis</h2>
+      </div>
+
+      {% if result %}
+        <div class="ticket-ref">TICKET #{{ '%04d'|format(ticket_id) }} · "{{ submitted_title or 'Untitled' }}"</div>
+
+        <div class="readout">
+          <div class="readout-row">
+            <span class="readout-label">Category</span>
+            <span class="readout-value">{{ result.category }}<span class="readout-conf">{{ (result.category_confidence*100)|round(1) }}%</span></span>
+          </div>
+          <div class="readout-row">
+            <span class="readout-label">Severity</span>
+            <span class="readout-value"><span class="dot dot-{{ result.severity }}"></span>{{ result.severity }}</span>
+          </div>
+          <div class="readout-row">
+            <span class="readout-label">Business impact</span>
+            <span class="readout-value">{{ result.business_impact }}</span>
+          </div>
+          <div class="readout-row">
+            <span class="readout-label">Priority</span>
+            <span class="priority-chip">{{ result.priority }}</span>
+          </div>
+        </div>
+
+        {% if result.possible_causes %}
+        <div class="causes-head">LIKELY CAUSES</div>
+        {% for c in result.possible_causes %}
+        <div class="cause-item">
+          <div class="cause-text">{{ c.cause }}</div>
+          <div class="suggestion">{{ c.suggestion }}</div>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+      {% else %}
+        <p class="empty-state">Submit a ticket on the left — category, severity, priority, and likely root causes will appear here instantly.</p>
+      {% endif %}
+    </div>
+
+  </div>
+
+  {% if rag %}
+  <div class="panel" style="margin-top: 22px;">
+    <div class="panel-head">
+      <span class="idx">03</span>
+      <h2>Knowledge Base Retrieval &amp; Resolution</h2>
+    </div>
+
+    <div class="workflow-steps">
+      {% for stage_key, stage_label in [('ticket_analysis','Ticket Analysis'), ('knowledge_retrieval','KB Retrieval'), ('context_augmentation','Context Augmentation'), ('response_generation','Resolution Generation')] %}
+      <div class="workflow-step {{ rag.workflow[stage_key] }}">
+        <span class="step-dot"></span>{{ stage_label }}
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if rag.status == 'INSUFFICIENT_KNOWLEDGE' %}
+      <div class="insufficient-box">{{ rag.message }} Recommend routing to a human agent.</div>
+    {% else %}
+
+      <div style="margin-bottom: 18px;">
+        {% for doc in rag.retrieved_documents %}
+        <div class="kb-card">
+          <div class="kb-card-head">
+            <span class="kb-title">{{ doc.title }}</span>
+            <span class="kb-relevance">{{ (doc.score*100)|round(0)|int }}% relevance</span>
+          </div>
+          <div class="kb-meta">{{ doc.id }} · {{ doc.category }}</div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="causes-head">GENERATED RESOLUTION</div>
+      {% for s in rag.steps %}
+      <div class="resolution-step">
+        <div class="step-text">{{ s.step }}. {{ s.text }}</div>
+        <div class="step-source">{{ s.source_id }} – {{ s.source_title }}</div>
+      </div>
+      {% endfor %}
+
+      <form method="POST" action="/ticket/{{ ticket_id }}/feedback" class="feedback-row">
+        <input type="hidden" name="resolved" value="yes">
+        <button type="submit" class="feedback-btn yes">✓ This resolved it</button>
+      </form>
+      <form method="POST" action="/ticket/{{ ticket_id }}/feedback" class="feedback-row" style="margin-top: -8px;">
+        <input type="hidden" name="resolved" value="no">
+        <button type="submit" class="feedback-btn no">✗ Still need help</button>
+      </form>
+    {% endif %}
+
+    <div class="stat-row" style="margin-top: 20px; margin-bottom: 0;">
+      <div class="stat-card">
+        <div class="stat-num">{{ rag_duration_ms }}ms</div>
+        <div class="stat-label">Response Time</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">{{ rag.retrieved_documents|length }}</div>
+        <div class="stat-label">Docs Retrieved</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">{{ rag.steps|length }}</div>
+        <div class="stat-label">Steps Generated</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">{{ 'OK' if rag.status == 'OK' else 'LOW' }}</div>
+        <div class="stat-label">Confidence</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% endif %}
+
+  {% if show_tickets %}
+  <div class="panel">
+    <div class="panel-head">
+      <span class="idx">03</span>
+      <h2>All tickets</h2>
+    </div>
+    <div style="overflow-x:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Employee</th><th>Title</th><th>Category</th>
+          <th>Severity</th><th>Priority</th><th>Resolved?</th><th>Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in tickets %}
+        <tr>
+          <td class="mono">{{ '%04d'|format(t.ticket_id) }}</td>
+          <td>{{ t.employee_name or '—' }}</td>
+          <td>{{ t.title or '—' }}</td>
+          <td>{{ t.category }}</td>
+          <td><span class="badge badge-{{ t.severity }}">{{ t.severity }}</span></td>
+          <td class="mono">{{ t.priority }}</td>
+          <td>
+            {% if t.resolved == 'yes' %}<span class="badge badge-Low">Yes</span>
+            {% elif t.resolved == 'no' %}<span class="badge badge-Critical">No</span>
+            {% else %}<span class="empty-state" style="padding:0;">—</span>
+            {% endif %}
+          </td>
+          <td class="mono" style="color:var(--muted); font-size:12px;">{{ t.created_at[:16] }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="empty-state" style="text-align:center;">No tickets submitted yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if show_ai_agent %}
+  <div class="panel" style="margin-bottom: 22px;">
+    <div class="panel-head"><span class="idx">◈</span><h2>Processing pipeline</h2></div>
+    <div class="pipeline">
+      <div class="pipeline-step"><span class="step-num">1</span> Ticket Analysis</div>
+      <span class="pipeline-arrow">→</span>
+      <div class="pipeline-step"><span class="step-num">2</span> Classify + Severity</div>
+      <span class="pipeline-arrow">→</span>
+      <div class="pipeline-step"><span class="step-num">3</span> KB Retrieval (TF-IDF)</div>
+      <span class="pipeline-arrow">→</span>
+      <div class="pipeline-step"><span class="step-num">4</span> Context Augmentation</div>
+      <span class="pipeline-arrow">→</span>
+      <div class="pipeline-step"><span class="step-num">5</span> Cited Resolution</div>
+    </div>
+    <p class="empty-state" style="padding:0;">
+      Category and severity come from two TF-IDF + Logistic Regression models trained on real
+      ticket data (Milestone 1). The resolution comes from a Retrieval-Augmented Generation
+      pipeline (Milestone 2): the ticket text is matched against a knowledge base using
+      TF-IDF + cosine similarity, and the response is built only from the retrieved articles —
+      every step cites its source. No external AI API is called; everything runs on this server.
+    </p>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-head"><span class="idx">A</span><h2>Classification evaluation</h2></div>
+      {% if classification_report %}
+      <table class="metric-table">
+        <tr><th>Metric</th><th>Target</th><th>Actual</th></tr>
+        <tr>
+          <td>Category classification</td>
+          <td>{{ classification_report.classification_target }}%</td>
+          <td class="{{ 'metric-pass' if classification_report.classification_status == 'PASS' else 'metric-below' }}">{{ classification_report.classification_accuracy }}%</td>
+        </tr>
+        <tr>
+          <td>Severity prediction</td>
+          <td>{{ classification_report.severity_target }}%</td>
+          <td class="{{ 'metric-pass' if classification_report.severity_status == 'PASS' else 'metric-below' }}">{{ classification_report.severity_accuracy }}%</td>
+        </tr>
+      </table>
+      <div class="note-box">Measured on a held-out 20% split of {{ classification_report.dataset_size }} real tickets — not the illustrative deck figures.</div>
+      {% else %}
+      <p class="empty-state">Run <code>python train_model.py</code> to generate this report.</p>
+      {% endif %}
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span class="idx">B</span><h2>Retrieval &amp; resolution metrics</h2></div>
+      <table class="metric-table">
+        <tr><th>Metric</th><th>Value</th></tr>
+        <tr>
+          <td>Retrieval accuracy</td>
+          <td class="metric-pass">{{ retrieval_report.retrieval_accuracy if retrieval_report else '—' }}%</td>
+        </tr>
+        <tr>
+          <td>Resolution rate</td>
+          <td class="{{ 'metric-pass' if stats.resolution_rate else '' }}">
+            {% if stats.resolution_rate is not none %}{{ stats.resolution_rate }}%{% else %}No feedback yet{% endif %}
+          </td>
+        </tr>
+        <tr>
+          <td>Avg. response time</td>
+          <td class="metric-pass">{{ (stats.avg_response_time_ms|round(0)|int) if stats.avg_response_time_ms else '—' }}{% if stats.avg_response_time_ms %}ms{% endif %}</td>
+        </tr>
+      </table>
+      <div class="note-box">
+        Retrieval accuracy: {{ retrieval_report.correct if retrieval_report else '—' }}/{{ retrieval_report.test_set_size if retrieval_report else '—' }}
+        hand-labeled test queries, measured with <code>evaluate_retrieval.py</code>.
+        Resolution rate is real user feedback from the ✓/✗ buttons on each ticket —
+        {{ stats.feedback_total }} ticket{{ 's' if stats.feedback_total != 1 else '' }} rated so far, not a fixed demo number.
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if show_dashboard %}
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-num">{{ stats.total }}</div>
+      <div class="stat-label">Total tickets</div>
+    </div>
+    {% set crit = (stats.by_severity | selectattr('label','equalto','Critical') | map(attribute='count') | first) or 0 %}
+    {% set high = (stats.by_severity | selectattr('label','equalto','High') | map(attribute='count') | first) or 0 %}
+    <div class="stat-card">
+      <div class="stat-num" style="color:var(--critical);">{{ crit }}</div>
+      <div class="stat-label">Critical</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:var(--high);">{{ high }}</div>
+      <div class="stat-label">High severity</div>
+    </div>
+    {% set p1 = (stats.by_priority | selectattr('label','equalto','P1') | map(attribute='count') | first) or 0 %}
+    <div class="stat-card">
+      <div class="stat-num" style="color:var(--accent);">{{ p1 }}</div>
+      <div class="stat-label">P1 tickets</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-head"><span class="idx">A</span><h2>Tickets by category</h2></div>
+      <div class="chart-wrap"><canvas id="catChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><span class="idx">B</span><h2>Tickets by severity</h2></div>
+      <div class="chart-wrap"><canvas id="sevChart"></canvas></div>
+    </div>
+  </div>
+
+  <script>
+    const catLabels = {{ stats.by_category | map(attribute='label') | list | tojson }};
+    const catCounts = {{ stats.by_category | map(attribute='count') | list | tojson }};
+    const sevLabels = {{ stats.by_severity | map(attribute='label') | list | tojson }};
+    const sevCounts = {{ stats.by_severity | map(attribute='count') | list | tojson }};
+
+    const severityColors = { Critical: '#E5484D', High: '#F5A623', Medium: '#4C9EEB', Low: '#3DD68C' };
+
+    Chart.defaults.color = '#8697AD';
+    Chart.defaults.font.family = "'Inter', sans-serif";
+
+    new Chart(document.getElementById('catChart'), {
+      type: 'bar',
+      data: {
+        labels: catLabels,
+        datasets: [{ data: catCounts, backgroundColor: '#F5A623', borderRadius: 3, maxBarThickness: 28 }]
+      },
+      options: {
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: '#263349' } },
+          y: { grid: { display: false } }
+        }
+      }
+    });
+
+    new Chart(document.getElementById('sevChart'), {
+      type: 'doughnut',
+      data: {
+        labels: sevLabels,
+        datasets: [{ data: sevCounts, backgroundColor: sevLabels.map(l => severityColors[l] || '#8697AD'), borderColor: '#121B2D', borderWidth: 2 }]
+      },
+      options: {
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 16 } } }
+      }
+    });
+  </script>
+  {% endif %}
+
+</div>
+</body>
+</html>
