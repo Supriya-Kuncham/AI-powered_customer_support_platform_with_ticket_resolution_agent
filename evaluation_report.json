@@ -1,0 +1,9 @@
+{
+  "dataset_size": 29647,
+  "classification_accuracy": 67.79,
+  "classification_target": 90.0,
+  "classification_status": "BELOW TARGET",
+  "severity_accuracy": 70.05,
+  "severity_target": 85.0,
+  "severity_status": "BELOW TARGET"
+}
