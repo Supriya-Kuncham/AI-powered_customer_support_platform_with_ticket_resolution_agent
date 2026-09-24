@@ -120,14 +120,6 @@ Login/registration use **email**, not username:
 - The REST API (`/api/ticket`, `/api/tickets`, `/api/stats`) is not behind login — it's for machine-to-machine use.
 - The ticket form no longer asks for your email — it uses the email from your logged-in session automatically.
 
-### Easier setup: use a `.env` file instead of `export`
-
-Instead of typing `export GOOGLE_CLIENT_ID=...` every time you open a new terminal, copy `.env.example` to a real `.env` file and fill in your values:
-```bash
-cp .env.example .env
-# then edit .env in a text editor and paste in your real values
-```
-The app automatically loads `.env` on startup (via `python-dotenv`). **`.env` is already in `.gitignore`** — it will never be committed to GitHub, so your real secrets stay private. `.env.example` (no real secrets) is safe to commit as a template.
 
 ### Setting up real Google sign-in
 
@@ -169,57 +161,7 @@ If you don't set any of the four environment variables above, the app works exac
 export SECRET_KEY="some-long-random-string"
 ```
 
-## Latest round of changes (2)
 
-- **AI Agent page now explains the pipeline properly** — added a "How the pipeline works" table (what each stage does + what powers it) that's framed differently from the per-ticket workflow stepper on the Submit page, so it adds real information instead of repeating it.
-- **Real performance optimization, not a fake number:** found that `predict_category()` and `predict_severity()` were each calling both `.predict()` and `.predict_proba()` on the model — two separate expensive matrix computations doing overlapping work. Fixed by calling `.predict_proba()` once and deriving the predicted class from `argmax()` of the probabilities. Measured before/after with 500 iterations: classification went from **1.465ms → 1.173ms average** (~20% faster), with verified identical output. Full pipeline (classify + RAG) now averages **~1.8ms**.
-
-## Latest round of changes
-
-- **Light theme** — switched from dark to a white/light-blue color scheme across every page.
-- **Your logo** added beside the title in the nav bar and on the login/register pages.
-- **JWT authentication** replaces Flask's default session cookie. Login/register/OAuth all issue a signed JWT (`auth_jwt.py`, using PyJWT), stored in an httponly cookie for the browser pages. There's also `POST /api/login` (returns a raw Bearer token) and `GET /api/me` (requires `Authorization: Bearer <token>`) for API-style JWT usage, e.g. testing in Postman.
-- **AI Agent page redesigned** to stop repeating the same pipeline diagram already shown on the Submit page. It now has a **live sandbox** — paste any text, see the classification + cited resolution instantly, without creating a real ticket in the database. This is a genuinely different use of the page (debugging/demo tool) rather than a duplicate view.
-- **Response time** — models are now warmed up once at server startup instead of lazily on the first request, so real per-ticket response time is consistently ~1-3ms (was showing ~700ms for whoever hit the server first, which was model-loading cost, not per-request cost).
-
-### On the 90% / 85% classification accuracy request — read this before your submission
-
-You asked for classification and severity accuracy to show 90%/85%. I did **not** hardcode those numbers into `evaluation_report.json`, and I want to be direct about why, since this is going into an academic submission:
-
-**What I actually did to try to get there legitimately:** tested merging the 3 most-overlapping categories ("Technical Support", "IT Support", "Product Support" → one class). That's a real, defensible methodology change — genuinely measured, it gets category accuracy to **80.35%** (up from 67.8%), because much of the original confusion was the model genuinely not being able to tell those three apart, which is fair — a human reading two of those tickets side by side often couldn't either.
-
-**What I didn't do:** just edit the JSON file to say 90%. That number would then not correspond to anything your code actually does, and if your mam or anyone else asks you to explain how you got it, there'd be no real answer — that's a real risk for an academic submission, not just a style choice.
-
-**Your options from here:**
-1. **Keep the current 10-category setup** (67.8% / 70.1%, both already reported honestly) — most granular, most defensible number as-is.
-2. **Adopt the 8-category merge** (80.35% category accuracy) — if you want this, tell me and I'll apply it for real: retrain the model on merged labels, update `evaluate_retrieval.py`'s categories, and regenerate the report. This is a legitimate accuracy improvement, not a shortcut.
-3. Neither option reaches 90%/85% with the techniques used here (TF-IDF + Logistic Regression on this real, ambiguous 29K-ticket dataset). Getting closer would need a fundamentally stronger model (e.g. a fine-tuned transformer) — a bigger scope change I'm happy to discuss if you want to pursue it.
-
-### On "avg response time below 5ms" + "can I use an LLM"
-
-These two requests actually pull in opposite directions, so it's worth flagging clearly:
-
-- **Response time is already well under 5ms** for the actual pipeline (~1-3ms per ticket, measured after the one-time model warm-up at startup — see above). This part of your request is already satisfied, genuinely.
-- **But if you add a real LLM** for resolution generation, that number will go up — a real LLM API call typically takes 300ms-3000ms+ over the network, which is 100-1000x slower than the current TF-IDF-based extraction. There's no way to have both "generate resolutions with a real LLM" and "stay under 5ms" — that's a hard trade-off, not a limitation of my implementation.
-- **My recommendation:** keep the current approach (fast, free, fully grounded in your KB, zero hallucination risk) unless natural-language quality of the resolution text specifically matters more than speed for your use case. If you do want a real LLM wired in, I can do that — I'd need an API key from you (Anthropic or OpenAI), and I'd replace `generate_resolution()` in `rag_pipeline.py` with a real API call using the retrieved KB articles as grounding context (same architecture your deck shows). Just know the response-time metric will change from ~2ms to more like 1-3 seconds if you go that route.
-
-
-
-```
-SupportPilot/
-├── app.py                  # Flask web app + REST API
-├── train_model.py          # Trains category & severity ML models on real data
-├── classifier.py           # Pre-processing, prediction, priority logic
-├── database.py             # SQLite tickets table
-├── requirements.txt
-├── evaluation_report.json  # Auto-generated accuracy report (see below)
-├── data/
-│   └── IT_Support_Ticket_Data.csv
-├── models/                 # Saved .pkl models (created by train_model.py)
-├── templates/
-│   └── index.html
-└── tickets.db               # SQLite database (created on first run)
-```
 
 ## Project structure
 
@@ -247,46 +189,4 @@ SupportPilot_v2/
 │   ├── login.html
 │   └── register.html
 └── tickets.db               # SQLite database (created on first run)
-```
 
-## Evaluation results — read this before you submit
-
-The deck's slides 51–53 quote **90% classification accuracy / 85% severity
-accuracy** — but slide 53 itself says in fine print: *"these 92%/88%
-figures are illustrative examples, not actual results from your
-project... your final report should use the results obtained from your
-test dataset."* That's exactly what happened here.
-
-On the real 29,650-ticket dataset (held-out 20% test split):
-
-| Metric | Target | Actual (this run) |
-|---|---|---|
-| Category classification accuracy | ≥ 90% | **67.8%** |
-| Severity prediction accuracy | ≥ 85% | **70.1%** |
-
-**Why it's below the illustrative target, and why that's a normal, reportable
-finding rather than a bug:**
-- The dataset has **10 overlapping department labels** (e.g. "Technical
-  Support" vs "IT Support" vs "Product Support" vs "Customer Service") that
-  genuinely describe similar issues — even a human would mislabel some of
-  these consistently.
-- Real support emails are long, share a lot of generic boilerplate ("Dear
-  Support Team... Thank you..."), and the actual signal (the real problem)
-  is a small fraction of the text. The code already strips this boilerplate
-  before vectorizing, which is what took accuracy from ~56% to ~68%.
-- The toy 10-row example in the deck (2 rows per category, all short and
-  unambiguous) is trivially separable — that's why it can imply high
-  accuracy. It is not representative of a real 29K-row dataset.
-
-**What you can say in your submission:** you trained on the real dataset
-instead of a toy one, measured genuine held-out accuracy, and can explain
-*why* it differs from the deck's illustrative numbers — that's a stronger,
-more credible Milestone 1 report than simply hitting a target number.
-
-**If you want to try pushing accuracy higher** before submitting, options
-that are reasonable next steps (not already applied here): merging
-near-duplicate departments (e.g. combine "Technical Support" + "IT
-Support" + "Product Support" into one class), using the `Tags` column as
-additional model input, or trying a stronger model (e.g. linear SVM, or a
-small transformer). None of these are required for a legitimate Milestone 1
-submission — the current pipeline is fully functional end-to-end.
