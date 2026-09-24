@@ -39,33 +39,7 @@ Every step is logged with a timestamp, shown live on the **AI Agent** page as "C
    ```
 4. Restart the app. Escalated tickets will now create real Jira issues.
 
-### Setting up real email sending
 
-1. If using Gmail: go to your Google Account → Security → 2-Step Verification → App passwords, and generate one for "Mail". **Do not use your real Gmail password** — it won't work and isn't safe to store here anyway.
-2. Add to `.env`:
-   ```
-   SMTP_EMAIL=youraddress@gmail.com
-   SMTP_PASSWORD=the-16-character-app-password
-   SMTP_SERVER=smtp.gmail.com
-   SMTP_PORT=587
-   ```
-3. Restart the app. Auto-resolved and escalated tickets will now send real emails to the requester.
-
-### What happens without any of this configured
-
-Same principle as OAuth: nothing crashes. The Escalation Agent still runs and still decides AUTO_RESOLVE vs ESCALATE — it just reports "Jira not connected" / "Email not connected" instead of actually creating a ticket or sending a message. The Integrations page shows this status honestly.
-
-
-
-This project does **not** call OpenAI, Anthropic, or any external LLM API.
-"AI" here means classical machine learning trained locally with
-**scikit-learn** (TF-IDF vectorizer + Logistic Regression), exactly as
-specified in slide 10 of the deck. The only "API" in the project is the
-**REST API that SupportPilot itself exposes** (`POST /api/ticket`), which
-slides 47–50 explicitly ask for — that's a Flask endpoint you host, not a
-third-party service. If you later want LLM-based classification (mentioned
-as a future upgrade in the deck's intro), that would need an API key and
-is a Milestone-2+ concern, not part of this build.
 
 ## How to run it
 
